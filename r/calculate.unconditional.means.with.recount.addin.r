@@ -57,6 +57,25 @@ outfile3 <- file.path("..", "combined_tables", results.subsubdir, infilenames[3]
 
 
 # =============================================================================
+# Parameter settings, HACKY extra ones.
+#
+# These pathnames don't follow the same scheme as above, so am treating them
+# separately.
+
+extra.subdirs <- file.path("..", "uncalibrate_full",
+                           "n=020000_m=02000_p=0.500_replacement=False_step=1")
+
+extra.filenames1 <- file.path(extra.subdirs,
+                              "bravo_0.05",
+                              paste0("bravo_", infilenames))
+
+extra.filenames2 <- file.path(extra.subdirs,
+                              "bravo_without_replacement_0.05",
+                              paste0("bravo_without_replacement_",
+                                     infilenames))
+
+
+# =============================================================================
 # Functions.
 
 # Get path to all required files for a given results subdirectory.
@@ -109,8 +128,34 @@ save.results <- function(resultsmat, ...) {
 # Load and munge data.
 dd <- Map(load.and.munge, results.subdirs)
 
+# Load and munge extra data.
+dd.extra1 <- Map(load.results, extra.filenames1)
+dd.extra2 <- Map(load.results, extra.filenames2)
+names(dd.extra1) <- results.names
+names(dd.extra2) <- results.names
+
 # Main calculations.
 ee <- Map(calc.sampsize, dd)
+ee.extra1 <- calc.sampsize(dd.extra1)
+ee.extra2 <- calc.sampsize(dd.extra2)
+
+# Combine the main and extra results together.
+dd$uncalibrated_tables$power <-
+    cbind(dd$uncalibrated_tables$power,
+          dd.extra1$power[, 3, drop = FALSE],
+          dd.extra2$power[, 3, drop = FALSE])
+dd$uncalibrated_tables$conditionalmean <-
+    cbind(dd$uncalibrated_tables$conditionalmean,
+          dd.extra1$conditionalmean[, 3, drop = FALSE],
+          dd.extra2$conditionalmean[, 3, drop = FALSE])
+dd$uncalibrated_tables$unconditional_mean <-
+    cbind(dd$uncalibrated_tables$unconditional_mean,
+          dd.extra1$unconditional_mean[, 3, drop = FALSE],
+          dd.extra2$unconditional_mean[, 3, drop = FALSE])
+ee$uncalibrated_tables <-
+    cbind(ee$uncalibrated_tables,
+          ee.extra1[, 3, drop = FALSE],
+          ee.extra2[, 3, drop = FALSE])
 
 # Write output to files.
 Map(save.results, ee, outfiles)
